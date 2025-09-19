@@ -1,11 +1,11 @@
 // src/app/matches/page.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { firestore } from '@/app/firebase';
-import { collection, query, where, getDocs, Query } from 'firebase/firestore';
+// 'Query' import is removed as it was unused
+import { collection, query, where, getDocs } from 'firebase/firestore'; 
 import Link from 'next/link';
 
 interface Match {
@@ -23,60 +23,58 @@ export default function MyMatchesPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // If auth is loading or there's no user, exit early.
     if (authLoading || !user) {
       if (!authLoading) setLoading(false);
       return;
     }
 
     const fetchMatches = async () => {
-      // Query 1: Get matches where the user is the CREATOR
-      const createdQuery = query(
-        collection(firestore, 'challenges'),
-        where('status', '==', 'accepted'),
-        where('creatorId', '==', user.uid)
-      );
+      setLoading(true);
+      try {
+        const createdQuery = query(
+          collection(firestore, 'challenges'),
+          where('status', '==', 'accepted'),
+          where('creatorId', '==', user.uid)
+        );
+        const acceptedQuery = query(
+          collection(firestore, 'challenges'),
+          where('status', '==', 'accepted'),
+          where('accepterId', '==', user.uid)
+        );
 
-      // Query 2: Get matches where the user is the ACCEPTER
-      const acceptedQuery = query(
-        collection(firestore, 'challenges'),
-        where('status', '==', 'accepted'),
-        where('accepterId', '==', user.uid)
-      );
+        const [createdSnapshot, acceptedSnapshot] = await Promise.all([
+          getDocs(createdQuery),
+          getDocs(acceptedQuery),
+        ]);
 
-      // Run both queries in parallel
-      const [createdSnapshot, acceptedSnapshot] = await Promise.all([
-        getDocs(createdQuery),
-        getDocs(acceptedQuery),
-      ]);
+        const matchesData: Match[] = [];
+        const matchIds = new Set<string>();
 
-      const matchesData: Match[] = [];
-      const matchIds = new Set<string>(); // Use a Set to prevent duplicates
+        createdSnapshot.forEach((doc) => {
+          if (!matchIds.has(doc.id)) {
+            matchesData.push({ id: doc.id, ...doc.data() } as Match);
+            matchIds.add(doc.id);
+          }
+        });
 
-      // Process results from the first query
-      createdSnapshot.forEach((doc) => {
-        if (!matchIds.has(doc.id)) {
-          matchesData.push({ id: doc.id, ...doc.data() } as Match);
-          matchIds.add(doc.id);
-        }
-      });
-
-      // Process results from the second query
-      acceptedSnapshot.forEach((doc) => {
-        if (!matchIds.has(doc.id)) {
-          matchesData.push({ id: doc.id, ...doc.data() } as Match);
-          matchIds.add(doc.id);
-        }
-      });
-
-      setMatches(matchesData);
-      setLoading(false);
+        acceptedSnapshot.forEach((doc) => {
+          if (!matchIds.has(doc.id)) {
+            matchesData.push({ id: doc.id, ...doc.data() } as Match);
+            matchIds.add(doc.id);
+          }
+        });
+        setMatches(matchesData);
+      } catch (error) { // The 'any' type is removed here
+        console.error("Failed to fetch matches:", error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchMatches();
-    
-  }, [user, authLoading]); // Re-run when user logs in/out
+  }, [user, authLoading]);
 
+  // ... (rest of the component remains the same)
   if (loading) {
     return <div className="text-center mt-10">Loading your matches...</div>;
   }

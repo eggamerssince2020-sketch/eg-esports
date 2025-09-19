@@ -1,11 +1,10 @@
-// src/components/ChatBox.tsx
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { firestore } from '@/app/firebase';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore'; // Ensure getDoc is imported
+// Import the Timestamp type from firestore
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, Timestamp } from 'firebase/firestore';
 
 interface ChatBoxProps {
   matchId: string;
@@ -16,7 +15,7 @@ interface Message {
   text: string;
   senderId: string;
   senderGamertag: string;
-  timestamp: any;
+  timestamp: Timestamp; // Changed from 'any' to 'Timestamp'
 }
 
 export default function ChatBox({ matchId }: ChatBoxProps) {
@@ -52,23 +51,22 @@ export default function ChatBox({ matchId }: ChatBoxProps) {
     e.preventDefault();
     if (!user || newMessage.trim() === '') return;
 
-    // --- THIS IS THE CORRECTED PART ---
-    // 1. Create a reference to the user's document
-    const userDocRef = doc(firestore, 'users', user.uid);
-    // 2. Pass the reference to the getDoc function
-    const userDocSnap = await getDoc(userDocRef);
-    
-    const senderGamertag = userDocSnap.exists() ? userDocSnap.data().gamertag : 'Player';
+    try {
+      const userDocRef = doc(firestore, 'users', user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      const senderGamertag = userDocSnap.exists() ? userDocSnap.data().gamertag : 'Player';
 
-    // Add the new message to the subcollection
-    await addDoc(collection(firestore, 'challenges', matchId, 'messages'), {
-      text: newMessage,
-      senderId: user.uid,
-      senderGamertag: senderGamertag,
-      timestamp: serverTimestamp(),
-    });
+      await addDoc(collection(firestore, 'challenges', matchId, 'messages'), {
+        text: newMessage,
+        senderId: user.uid,
+        senderGamertag: senderGamertag,
+        timestamp: serverTimestamp(),
+      });
 
-    setNewMessage(''); // Clear the input box
+      setNewMessage('');
+    } catch (error) {
+      console.error("Error sending message:", error);
+    }
   };
 
   return (

@@ -1,5 +1,4 @@
 // src/app/profile/edit/page.tsx
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -19,13 +18,11 @@ export default function EditProfilePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // 1. Fetch current user data to pre-fill the form
   useEffect(() => {
     if (!user) {
-      router.push('/login'); // Protect the route
+      router.push('/login');
       return;
     }
-
     const fetchUserData = async () => {
       const userDocRef = doc(firestore, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
@@ -47,31 +44,26 @@ export default function EditProfilePage() {
   const handleSaveChanges = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
-
     setLoading(true);
     setError('');
 
     try {
-      let newProfilePicUrl = null;
-
-      // 2. If a new profile picture is selected, upload it to Firebase Storage
+      let newProfilePicUrl: string | null = null;
       if (profilePicFile) {
         const storageRef = ref(storage, `profile-pictures/${user.uid}`);
         await uploadBytes(storageRef, profilePicFile);
         newProfilePicUrl = await getDownloadURL(storageRef);
       }
 
-      // 3. Prepare the data to be updated in Firestore
-      const updatedData: any = { gamertag, bio };
+      const updatedData: { [key: string]: string | null } = { gamertag, bio };
       if (newProfilePicUrl) {
         updatedData.profilePictureUrl = newProfilePicUrl;
       }
-
-      // 4. Update the user's document in Firestore
+      
       const userDocRef = doc(firestore, 'users', user.uid);
       await updateDoc(userDocRef, updatedData);
       
-      router.push(`/profile/${user.uid}`); // Redirect to profile page
+      router.push(`/profile/${user.uid}`);
     } catch (err) {
       console.error("Error updating profile: ", err);
       setError("Failed to save changes. Please try again.");
@@ -80,7 +72,8 @@ export default function EditProfilePage() {
     }
   };
 
-  return (
+  // ... (return statement remains the same)
+   return (
     <div className="container mx-auto p-4 mt-10 max-w-2xl">
       <h1 className="text-3xl font-bold mb-6">Edit Your Profile</h1>
       <form onSubmit={handleSaveChanges} className="bg-gray-800 p-8 rounded-lg">
@@ -104,4 +97,3 @@ export default function EditProfilePage() {
     </div>
   );
 }
-
