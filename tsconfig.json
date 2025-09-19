@@ -18,6 +18,9 @@
         "name": "next"
       }
     ],
+    // ADD THIS LINE
+    "baseUrl": ".",
+    // THE PATHS CONFIGURATION YOU ALREADY HAD
     "paths": {
       "@/*": ["./src/*"]
     }

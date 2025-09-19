@@ -1,103 +1,145 @@
-import Image from "next/image";
+// src/app/page.tsx
 
-export default function Home() {
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useAuth } from '@/context/AuthContext';
+import CreateChallengeModal from '@/components/CreateChallengeModal';
+import { firestore } from './firebase';
+import { collection, query, where, onSnapshot, doc, updateDoc, getDoc } from 'firebase/firestore';
+
+interface Challenge {
+  id: string;
+  creatorId: string;
+  creatorGamertag: string;
+  game: string;
+  type: string;
+  status: 'open' | 'accepted' | 'completed';
+}
+
+export default function HomePage() {
+  const { user, loading: authLoading } = useAuth(); // Get user and authentication loading state
+  const [showModal, setShowModal] = useState(false);
+  const [challenges, setChallenges] = useState<Challenge[]>([]);
+  const [challengesLoading, setChallengesLoading] = useState(true);
+
+  // THIS IS THE KEY CHANGE
+  // This useEffect now depends on 'user' and 'authLoading'.
+  // It will only run AFTER firebase has confirmed the user's login status.
+  useEffect(() => {
+    // If auth is still loading, do nothing.
+    if (authLoading) return;
+
+    // If there is no user, there's nothing to listen to.
+    // Set loading to false and show the logged-out view.
+    if (!user) {
+      setChallenges([]);
+      setChallengesLoading(false);
+      return;
+    }
+    
+    // If we get here, we have a logged-in user. It is now safe to attach the listener.
+    const q = query(collection(firestore, 'challenges'), where('status', '==', 'open'));
+
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const challengesData: Challenge[] = [];
+      querySnapshot.forEach((doc) => {
+        challengesData.push({ id: doc.id, ...doc.data() } as Challenge);
+      });
+      setChallenges(challengesData);
+      setChallengesLoading(false);
+    });
+
+    // Cleanup function will be returned and called when the component unmounts
+    // or when the user logs out (causing this useEffect to re-run).
+    return () => unsubscribe();
+
+  }, [user, authLoading]); // Dependency array is crucial
+
+  const handleAcceptChallenge = async (challengeId: string) => {
+    // ... (This function remains the same as before)
+    if (!user) {
+      alert("You must be logged in to accept a challenge.");
+      return;
+    }
+
+    const challenge = challenges.find(c => c.id === challengeId);
+    if (challenge?.creatorId === user.uid) {
+      alert("You cannot accept your own challenge.");
+      return;
+    }
+
+    try {
+      const challengeRef = doc(firestore, 'challenges', challengeId);
+      const accepterDoc = await getDoc(doc(firestore, 'users', user.uid));
+      const accepterGamertag = accepterDoc.exists() ? accepterDoc.data().gamertag : "Challenger";
+
+      await updateDoc(challengeRef, {
+        status: 'accepted',
+        accepterId: user.uid,
+        accepterGamertag: accepterGamertag,
+      });
+
+      alert(`Challenge accepted! Get ready to play against ${challenge?.creatorGamertag}.`);
+
+    } catch (error) {
+      console.error("Error accepting challenge: ", error);
+      alert("Failed to accept the challenge. Please try again.");
+    }
+  };
+
+  // UI to show while authentication is being checked
+  if (authLoading) {
+    return <div className="text-center mt-10">Authenticating...</div>
+  }
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="container mx-auto p-4">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold">Live Challenge Board</h1>
+        {user && (
+          <button
+            onClick={() => setShowModal(true)}
+            className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded"
+          >
+            + Create Challenge
+          </button>
+        )}
+      </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+      {showModal && <CreateChallengeModal onClose={() => setShowModal(false)} />}
+
+      {/* Conditional rendering based on login state */}
+      {!user ? (
+        <div className="text-center bg-gray-800 p-8 rounded-lg">
+          <h2 className="text-2xl font-bold mb-4">Welcome to EG ESPORTS!</h2>
+          <p>Please log in or sign up to view and accept challenges.</p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {challengesLoading ? (
+            <p>Loading challenges...</p>
+          ) : challenges.length > 0 ? (
+            challenges.map((challenge) => (
+              <div key={challenge.id} className="bg-gray-800 p-6 rounded-lg shadow-lg flex flex-col justify-between">
+                <div>
+                  <h3 className="text-xl font-bold text-blue-400">{challenge.game}</h3>
+                  <p className="text-gray-300">{challenge.type}</p>
+                  <p className="text-sm text-gray-400 mt-2">Posted by: {challenge.creatorGamertag}</p>
+                </div>
+                <button
+                  onClick={() => handleAcceptChallenge(challenge.id)}
+                  className="mt-4 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                >
+                  Accept Challenge
+                </button>
+              </div>
+            ))
+          ) : (
+            <p>No open challenges right now. Why not create one?</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
