@@ -1,4 +1,3 @@
-// src/app/profile/edit/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -72,7 +71,6 @@ export default function EditProfilePage() {
     }
   };
 
-  // ... (return statement remains the same)
    return (
     <div className="container mx-auto p-4 mt-10 max-w-2xl">
       <h1 className="text-3xl font-bold mb-6">Edit Your Profile</h1>

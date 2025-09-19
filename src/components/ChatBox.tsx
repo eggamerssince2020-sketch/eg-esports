@@ -3,7 +3,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { firestore } from '@/app/firebase';
-// Import the Timestamp type from firestore
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, Timestamp } from 'firebase/firestore';
 
 interface ChatBoxProps {
@@ -15,7 +14,7 @@ interface Message {
   text: string;
   senderId: string;
   senderGamertag: string;
-  timestamp: Timestamp; // Changed from 'any' to 'Timestamp'
+  timestamp: Timestamp;
 }
 
 export default function ChatBox({ matchId }: ChatBoxProps) {
@@ -24,7 +23,6 @@ export default function ChatBox({ matchId }: ChatBoxProps) {
   const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Listen for new messages in real-time
   useEffect(() => {
     const messagesQuery = query(
       collection(firestore, 'challenges', matchId, 'messages'),
@@ -42,7 +40,6 @@ export default function ChatBox({ matchId }: ChatBoxProps) {
     return () => unsubscribe();
   }, [matchId]);
 
-  // Auto-scroll to the latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
@@ -83,16 +80,8 @@ export default function ChatBox({ matchId }: ChatBoxProps) {
         <div ref={messagesEndRef} />
       </div>
       <form onSubmit={handleSendMessage} className="flex">
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder="Type your message..."
-          className="flex-grow p-2 bg-gray-700 rounded-l-lg focus:outline-none"
-        />
-        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-r-lg">
-          Send
-        </button>
+        <input type="text" value={newMessage} onChange={(e) => setNewMessage(e.target.value)} placeholder="Type your message..." className="flex-grow p-2 bg-gray-700 rounded-l-lg focus:outline-none" />
+        <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white font-bold p-2 rounded-r-lg">Send</button>
       </form>
     </div>
   );

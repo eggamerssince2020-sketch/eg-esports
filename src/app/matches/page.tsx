@@ -1,10 +1,8 @@
-// src/app/matches/page.tsx
 'use client';
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { firestore } from '@/app/firebase';
-// 'Query' import is removed as it was unused
 import { collection, query, where, getDocs } from 'firebase/firestore'; 
 import Link from 'next/link';
 
@@ -64,7 +62,7 @@ export default function MyMatchesPage() {
           }
         });
         setMatches(matchesData);
-      } catch (error) { // The 'any' type is removed here
+      } catch (error) {
         console.error("Failed to fetch matches:", error);
       } finally {
         setLoading(false);
@@ -74,7 +72,6 @@ export default function MyMatchesPage() {
     fetchMatches();
   }, [user, authLoading]);
 
-  // ... (rest of the component remains the same)
   if (loading) {
     return <div className="text-center mt-10">Loading your matches...</div>;
   }
