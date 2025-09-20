@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { firestore } from '@/app/firebase';
-import { collection, query, where, getDocs, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+// FIX: 'doc' has been removed from this import line as it was not being used.
+import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface InviteMemberProps {
   teamId: string;
@@ -102,3 +103,4 @@ export default function InviteMember({ teamId, teamName, currentMembers }: Invit
     </div>
   );
 }
+
