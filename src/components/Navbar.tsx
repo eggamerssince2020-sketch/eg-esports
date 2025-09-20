@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
+import Image from 'next/image'; // 1. Import the Next.js Image component
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/app/firebase';
 import { signOut } from 'firebase/auth';
@@ -12,20 +13,19 @@ import { FiMenu, FiX } from 'react-icons/fi';
 export default function Navbar() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname(); // Hook to get the current URL path
+  const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      setIsMenuOpen(false); // Close menu on logout
+      setIsMenuOpen(false);
       router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
     }
   };
 
-  // This effect will run every time the page URL changes, closing the menu.
   useEffect(() => {
     setIsMenuOpen(false);
   }, [pathname]);
@@ -39,12 +39,20 @@ export default function Navbar() {
   return (
     <nav className="bg-gray-800 p-4 shadow-lg sticky top-0 z-50">
       <div className="container mx-auto flex justify-between items-center">
-        {/* Logo */}
-        <Link href="/" className="text-white text-2xl font-bold">
-          EG ESPORTS
+        {/* --- 2. UPDATED LOGO AREA --- */}
+        <Link href="/" className="flex items-center space-x-3">
+          <Image
+            src="/logo.png" // Path to your logo in the 'public' folder
+            alt="EG ESPORTS Logo"
+            width={40} // Sets the image width
+            height={40} // Sets the image height
+            className="object-contain" // Ensures image scales properly
+          />
+          <span className="text-white text-2xl font-bold">EG ESPORTS</span>
         </Link>
+        {/* --- END OF UPDATED LOGO AREA --- */}
 
-        {/* --- DESKTOP MENU --- (Hidden on screens smaller than 'md') */}
+        {/* --- DESKTOP MENU --- */}
         <div className="hidden md:flex items-center space-x-4">
           {loading ? ( <div className="text-white">Loading...</div> ) 
           : user ? (
@@ -66,7 +74,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* --- MOBILE MENU BUTTON --- (Visible only on screens smaller than 'md') */}
+        {/* --- MOBILE MENU BUTTON --- */}
         <div className="md:hidden flex items-center">
           {user && <NotificationBell />}
           <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="ml-4 text-white focus:outline-none">
@@ -75,7 +83,7 @@ export default function Navbar() {
         </div>
       </div>
 
-      {/* --- MOBILE MENU DROPDOWN --- (Renders below the navbar when open) */}
+      {/* --- MOBILE MENU DROPDOWN --- */}
       {isMenuOpen && (
         <div className="md:hidden mt-4">
            {user ? (
