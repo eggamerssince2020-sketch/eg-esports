@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { firestore } from '@/app/firebase';
-// FIX: 'doc' has been removed from this import line as it was not being used.
 import { collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 
 interface InviteMemberProps {
@@ -53,29 +52,30 @@ export default function InviteMember({ teamId, teamName, currentMembers }: Invit
       await addDoc(collection(firestore, 'invitations'), {
         teamId: teamId,
         teamName: teamName,
-        fromUserId: user.uid, // The captain sending the invite
-        toUserId: inviteeId,    // The player being invited
+        fromUserId: user.uid,
+        toUserId: inviteeId,
         status: 'pending',
         createdAt: serverTimestamp(),
       });
       
-      // --- START: CREATE NOTIFICATION LOGIC ---
       // Create a notification for the invited player
       const notificationRef = collection(firestore, 'users', inviteeId, 'notifications');
       await addDoc(notificationRef, {
         message: `You have been invited to join the team: ${teamName}`,
-        link: '/invitations', // Direct link to the page where they can respond
+        link: '/invitations',
         read: false,
         createdAt: serverTimestamp(),
       });
-      // --- END: CREATE NOTIFICATION LOGIC ---
 
       setSuccess(`Invitation sent to ${inviteeGamertag}!`);
       setInviteeGamertag('');
 
     } catch (err) {
-      const error = err as Error;
-      setError(error.message);
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -103,4 +103,3 @@ export default function InviteMember({ teamId, teamName, currentMembers }: Invit
     </div>
   );
 }
-

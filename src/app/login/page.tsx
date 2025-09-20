@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { auth } from '@/app/firebase';
 import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
-import Link from 'next/link'; // Make sure Link is imported
+import { FirebaseError } from 'firebase/app';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -28,13 +29,16 @@ export default function LoginPage() {
       await signInWithEmailAndPassword(auth, email, password);
       router.push('/');
     } catch (err) {
-      // FIX: Explicitly cast the error to avoid 'any' type
-      const error = err as any;
-      setError("Invalid email or password.");
-      console.error("Error signing in:", error);
+      if (err instanceof FirebaseError) {
+        console.error("Firebase login error:", err.code, err.message);
+        setError("Invalid email or password.");
+      } else {
+        console.error("Generic login error:", err);
+        setError("An unexpected error occurred. Please try again.");
+      }
     }
   };
-  
+
   const handleForgotPassword = async () => {
     if (!email) {
       setError("Please enter your email address to reset your password.");
@@ -46,10 +50,13 @@ export default function LoginPage() {
       await sendPasswordResetEmail(auth, email);
       setSuccessMessage("Password reset email sent. Please check your inbox.");
     } catch (err) {
-      // FIX: Explicitly cast the error to avoid 'any' type
-      const error = err as any;
-      console.error("Error sending password reset email: ", error);
-      setError("Failed to send password reset email. Please try again.");
+      if (err instanceof FirebaseError) {
+        console.error("Firebase password reset error:", err.code, err.message);
+        setError("Failed to send password reset email. Please check if the email is correct.");
+      } else {
+        console.error("Generic password reset error:", err);
+        setError("An unexpected error occurred. Please try again.");
+      }
     }
   };
 
@@ -60,9 +67,9 @@ export default function LoginPage() {
         <form onSubmit={handleLogin} className="space-y-4">
           <div>
             <label className="block text-sm font-bold mb-2" htmlFor="email">Email</label>
-            <input 
+            <input
               id="email"
-              type="email" 
+              type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -71,9 +78,9 @@ export default function LoginPage() {
           </div>
           <div className="relative">
             <label className="block text-sm font-bold mb-2" htmlFor="password">Password</label>
-            <input 
+            <input
               id="password"
-              type={showPassword ? "text" : "password"} 
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -84,6 +91,7 @@ export default function LoginPage() {
               onClick={() => setShowPassword(!showPassword)}
               className="absolute inset-y-0 right-0 top-7 pr-3 flex items-center text-gray-400 hover:text-white"
             >
+              {/* SVG icon for showing/hiding password */}
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {showPassword ? (
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-7 0-11-7-11-7a17.58 17.58 0 014-5.17m5.75-2.58a10.025 10.025 0 015.75 2.58" />
@@ -94,7 +102,7 @@ export default function LoginPage() {
               </svg>
             </button>
           </div>
-          
+
           <div className="text-right">
             <button type="button" onClick={handleForgotPassword} className="text-sm text-blue-400 hover:underline">
               Forgot Password?
@@ -103,7 +111,7 @@ export default function LoginPage() {
 
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
           {successMessage && <p className="text-green-500 text-sm text-center">{successMessage}</p>}
-          
+
           <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none">
             Login
           </button>
