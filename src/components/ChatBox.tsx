@@ -49,16 +49,42 @@ export default function ChatBox({ matchId }: ChatBoxProps) {
     if (!user || newMessage.trim() === '') return;
 
     try {
+      // Get sender's gamertag
       const userDocRef = doc(firestore, 'users', user.uid);
       const userDocSnap = await getDoc(userDocRef);
       const senderGamertag = userDocSnap.exists() ? userDocSnap.data().gamertag : 'Player';
 
+      // Add the new message to the subcollection
       await addDoc(collection(firestore, 'challenges', matchId, 'messages'), {
         text: newMessage,
         senderId: user.uid,
         senderGamertag: senderGamertag,
         timestamp: serverTimestamp(),
       });
+      
+      // --- START: CREATE NOTIFICATION LOGIC ---
+      const challengeDocRef = doc(firestore, 'challenges', matchId);
+      const challengeDocSnap = await getDoc(challengeDocRef);
+      if (challengeDocSnap.exists()) {
+        const challengeData = challengeDocSnap.data();
+        
+        // Determine the opponent's ID
+        const opponentId = challengeData.creatorId === user.uid 
+          ? challengeData.accepterId 
+          : challengeData.creatorId;
+        
+        // Create a notification for the opponent
+        if (opponentId) {
+          const opponentNotificationRef = collection(firestore, 'users', opponentId, 'notifications');
+          await addDoc(opponentNotificationRef, {
+            message: `You have a new message from ${senderGamertag} in your match.`,
+            link: `/matches/${matchId}`,
+            read: false,
+            createdAt: serverTimestamp(),
+          });
+        }
+      }
+      // --- END: CREATE NOTIFICATION LOGIC ---
 
       setNewMessage('');
     } catch (error) {

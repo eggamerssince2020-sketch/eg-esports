@@ -1,56 +1,101 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation'; // Import usePathname
 import { useAuth } from '@/context/AuthContext';
 import { auth } from '@/app/firebase';
 import { signOut } from 'firebase/auth';
+import NotificationBell from './NotificationBell';
+import { FiMenu, FiX } from 'react-icons/fi';
 
 export default function Navbar() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname(); // Hook to get the current URL path
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
       await signOut(auth);
-      router.push('/login'); // Redirect to login page after logout
+      setIsMenuOpen(false); // Close menu on logout
+      router.push('/login');
     } catch (error) {
       console.error("Error signing out: ", error);
     }
   };
 
+  // This effect will run every time the page URL changes, closing the menu.
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [pathname]);
+
+  const MobileLink = ({ href, children }: { href: string; children: React.ReactNode }) => (
+    <Link href={href} className="block text-white hover:text-blue-400 py-2 text-lg">
+      {children}
+    </Link>
+  );
+
   return (
     <nav className="bg-gray-800 p-4 shadow-lg sticky top-0 z-50">
       <div className="container mx-auto flex justify-between items-center">
+        {/* Logo */}
         <Link href="/" className="text-white text-2xl font-bold">
           EG ESPORTS
         </Link>
-        <div className="flex items-center space-x-4">
-          {loading ? (
-            <div className="text-white">Loading...</div>
-          ) : user ? (
+
+        {/* --- DESKTOP MENU --- (Hidden on screens smaller than 'md') */}
+        <div className="hidden md:flex items-center space-x-4">
+          {loading ? ( <div className="text-white">Loading...</div> ) 
+          : user ? (
             <>
-              {/* --- THIS IS THE NEW LINK --- */}
-              <Link href="/matches" className="text-white hover:text-blue-400">
-                My Matches
-              </Link>
-              <Link href={`/profile/${user.uid}`} className="text-white hover:text-blue-400">
-                My Profile
-              </Link>
-              <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">
-                Logout
-              </button>
+              <Link href="/my-teams" className="text-white hover:text-blue-400">My Teams</Link>
+              <Link href="/invitations" className="text-white hover:text-blue-400">My Invitations</Link>
+              <Link href="/matches" className="text-white hover:text-blue-400">My Matches</Link>
+              <div className="flex items-center space-x-4 ml-4">
+                <NotificationBell />
+                <Link href={`/profile/${user.uid}`} className="text-white hover:text-blue-400">My Profile</Link>
+                <button onClick={handleLogout} className="bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded">Logout</button>
+              </div>
             </>
           ) : (
             <>
               <Link href="/login" className="text-white hover:text-blue-400">Login</Link>
-              <Link href="/signup" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                Sign Up
-              </Link>
+              <Link href="/signup" className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Sign Up</Link>
             </>
           )}
         </div>
+
+        {/* --- MOBILE MENU BUTTON --- (Visible only on screens smaller than 'md') */}
+        <div className="md:hidden flex items-center">
+          {user && <NotificationBell />}
+          <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="ml-4 text-white focus:outline-none">
+            {isMenuOpen ? <FiX size={28} /> : <FiMenu size={28} />}
+          </button>
+        </div>
       </div>
+
+      {/* --- MOBILE MENU DROPDOWN --- (Renders below the navbar when open) */}
+      {isMenuOpen && (
+        <div className="md:hidden mt-4">
+           {user ? (
+            <div className="flex flex-col items-start space-y-2">
+              <MobileLink href="/my-teams">My Teams</MobileLink>
+              <MobileLink href="/invitations">My Invitations</MobileLink>
+              <MobileLink href="/matches">My Matches</MobileLink>
+              <MobileLink href={`/profile/${user.uid}`}>My Profile</MobileLink>
+              <button onClick={handleLogout} className="w-full text-left bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-4 rounded mt-2 text-lg">
+                Logout
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col items-start space-y-2">
+              <MobileLink href="/login">Login</MobileLink>
+              <MobileLink href="/signup">Sign Up</MobileLink>
+            </div>
+          )}
+        </div>
+      )}
     </nav>
   );
 }
